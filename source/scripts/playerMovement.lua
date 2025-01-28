@@ -17,23 +17,22 @@ Player = {}
 Player.__index = Player
 
 -- Constructor to initialize the player object with animations
-function Player.new(spriteSheetPath, frameWidth, frameHeight, startX, startY)
+function Player:new(spriteSheetPath, frameWidth, frameHeight, startX, startY)
     local self = setmetatable({}, Player)
 
     -- DEBUG
     print("Player.new() called with spriteSheetPath: " .. spriteSheetPath)
     
     -- Load the player sprite sheet
-    local spriteTable = gfx.imagetable.new(spriteSheetPath)
+    local spriteTable = gfx.imagetable.new(spriteSheetPath, 8, 16) -- Example frame dimensions
     assert(spriteTable, "Failed to load player sprite sheet! Check file path and format.") -- Use this to check if the image is loaded successfully
     
     self.sprite = AnimatedSprite.new(spriteTable) -- Create an animated sprite using the sprite sheet
     assert(self.sprite, "Failed to create player sprite!") -- Use this to check if the sprite is created successfully
 
-    -- Create an animated sprite for the player
-    self.sprite = gfx.sprite.new(spriteTable)
+    -- Set the player sprite properties
     self.sprite:setSize(frameWidth, frameHeight)
-    self:moveTo(startX, startY) -- Set the player sprite position
+    self.sprite:moveTo(startX, startY) -- Set the player sprite position
     self.sprite:add() -- Add the player sprite to the update loop
     
     -- Add animation states

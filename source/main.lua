@@ -23,15 +23,14 @@ function drawBackground()
     gfx.clear()
     gfx.setFont(gfx.getSystemFont("normal"), "normal") -- Set the default system font
     gfx.setImageDrawMode(gfx.kDrawModeFillBlack) -- Set the default image draw mode
-    gfx.drawTextAligned("Screen Index: " .. tostring(currentScreenIndex),
-        200, 120, kTextAlignment.center) -- Draw text centered on the screen
+    gfx.drawTextAligned("Screen Index: " .. tostring(currentScreenIndex), 200, 120, kTextAlignment.center) -- Draw text centered on the screen
 end
 
 -- INITIALIZE
 function pd.init()
     -- Create the player using the Player class from playerMovement.lua
     -- Pass the path to the sprite sheet and specify frame dimensions
-    player = Player.new("sprites/avatar-8-16", 8, 16, 200, 180) -- Example sprite sheet
+    player = Player.new(nil, "sprites/avatar-8-16", 8, 16, 200, 180) -- Example sprite sheet
 end
 
 -- UPDATE
