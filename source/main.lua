@@ -36,7 +36,7 @@ end
 -- UPDATE
 function pd.update()
     -- Draw the FPS
-    pd.drawFPS(10, 10)
+    pd.drawFPS(0,0)
 
     -- Update the player movement and animation
     player:update()
