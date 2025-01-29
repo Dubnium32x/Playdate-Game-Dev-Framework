@@ -8,6 +8,7 @@ This framework provides a starting point for developing games on the Playdate co
 - **Sprite Animation**: Easily create and manage sprite animations.
 - **Input Handling**: Handle player input from the Playdate's buttons and crank.
 - **Game Loop**: A simple game loop to manage updates and rendering.
+- **Level Loading**: Minimum requirements for level use through LDtk.
 
 ## Getting Started
 

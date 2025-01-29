@@ -8,7 +8,7 @@ import "CoreLibs/timer"
 import "CoreLibs/ui"
 
 -- Import scripts
-import "scripts/playerMovement"
+import "scripts/player"
 
 -- Shorthand for the graphics modules and playdate specific functions
 local pd <const> = playdate
