@@ -37,7 +37,7 @@ function Player:new(spriteSheetPath, frameWidth, frameHeight, startX, startY)
     
     -- Add animation states
     self.sprite:addState("idle", 1, 1, {tickStep = 1, loop = true})
-    self.sprite:addState("walk", 2, 4, {tickStep = 4, loop = true})
+    self.sprite:addState("walk", 2, 4, {tickStep = 2, loop = true})
     self.sprite:playAnimation("idle") -- Play the idle animation by default 
     
     return self
