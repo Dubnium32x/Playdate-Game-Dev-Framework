@@ -33,4 +33,10 @@ This framework provides a starting point for developing games on the Playdate co
 2. Implement your game logic in the provided structure.
 3. Build and run your game using the Playdate SDK.
 
-### Directory Structure
+### Third Party Library Inclusions:
+
+#### AnimatedSprite
+https://github.com/Whitebrim/AnimatedSprite
+#### LDtk Importer
+https://github.com/NicMagnier/PlaydateLDtkImporter/blob/main
+
