@@ -21,7 +21,7 @@ local player = nil
 -- INITIALIZE
 function pd.init()
     -- Create the player using the Player class from playerMovement.lua
-    player = Player.new(nil, "sprites/avatar-8-16", 8, 16, 200, 180) -- Example sprite sheet (requires nil first for "self")
+    player = Player.new(nil, "sprites/avatar", 8, 16, 200, 180) -- Example sprite sheet (requires nil first for "self")
     pd:draw()
 end
 
