@@ -37,13 +37,12 @@ function Player:new(spriteSheetPath, frameWidth, frameHeight, startX, startY)
     
     -- Add animation states
     self.sprite:addState("idle", 1, 1, {tickStep = 1, loop = true})
-    self.sprite:addState("walk", 2, 4, {tickStep = 0.1, loop = true})
-    self.sprite:playAnimation("idle") -- Play the idle animation by default 
+    self.sprite:addState("walk", 2, 4, {tickStep = 1, loop = true})
     
     return self
 end
 
--- Update function to handle player movement and animation
+-- Update
 function Player:update()
     local moveSpeed = 2 -- Pixels per frame
     local isMoving = false -- Track if the player is moving
