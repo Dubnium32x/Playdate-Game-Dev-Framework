@@ -28,7 +28,7 @@ function CrankRotation:update()
     local crankDelta = playdate.getCrankChange()
 
     -- Rotate the sprite based on crank movement
-    self.angle += crankDelta
+    self.angle = self.angle + crankDelta
     self.sprite:setRotation(self.angle)
 
     self.lastCrankPosition = newCrankPosition

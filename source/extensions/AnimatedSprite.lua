@@ -112,7 +112,7 @@ function AnimatedSprite:playAnimation()
 	setImage(self)
 	drawFrame(self)
 	if (state.framesCount == 1) then
-		self._loopsFinished += 1
+		self._loopsFinished = self._loopsFinished + 1
 		state.onFrameChangedEvent(self)
 		state.onLoopFinishedEvent(self)
 	else
@@ -394,7 +394,7 @@ local function processAnimation(self)
 	local state = self.states[self.currentState]
 
 	local function changeFrame(value)
-		value += state.firstFrameIndex
+		value = value + state.firstFrameIndex
 		self._currentFrame = value
 		state.onFrameChangedEvent(self)
 	end
@@ -407,7 +407,7 @@ local function processAnimation(self)
 	if (self._currentFrame == 0) then -- true only after changing state
 		self._currentFrame = state.animationStartingFrame + state.firstFrameIndex - 1
 		if (framesCount == 1) then
-			self._loopsFinished += 1
+			self._loopsFinished = self._loopsFinished + 1
 			state.onFrameChangedEvent(self)
 			state.onLoopFinishedEvent(self)
 			return
@@ -419,7 +419,7 @@ local function processAnimation(self)
 	end
 
 	if (framesCount == 1) then -- if this state is only 1 frame long
-		self._loopsFinished += 1
+		self._loopsFinished = self._loopsFinished + 1
 		state.onFrameChangedEvent(self)
 		state.onLoopFinishedEvent(self)
 		return
@@ -431,7 +431,7 @@ local function processAnimation(self)
 				changeFrame(frame + frameStep)
 			else
 				if (frame ~= framesCount - 1) then
-					self._loopsFinished += 1
+					self._loopsFinished = self._loopsFinished + 1
 					changeFrame(2 * framesCount - frame - frameStep - 2)
 					state.onLoopFinishedEvent(self)
 				else
@@ -444,7 +444,7 @@ local function processAnimation(self)
 				changeFrame(frame - frameStep)
 			else
 				if (frame ~= 0) then
-					self._loopsFinished += 1
+					self._loopsFinished = self._loopsFinished + 1
 					changeFrame(frameStep - frame)
 					state.onLoopFinishedEvent(self)
 				else
@@ -459,7 +459,7 @@ local function processAnimation(self)
 				changeFrame(frame - frameStep)
 			else
 				if (frame ~= 0) then
-					self._loopsFinished += 1
+					self._loopsFinished = self._loopsFinished + 1
 					changeFrame((frame - frameStep) % framesCount)
 					state.onLoopFinishedEvent(self)
 				else
@@ -471,7 +471,7 @@ local function processAnimation(self)
 				changeFrame(frame + frameStep)
 			else
 				if (frame ~= framesCount - 1) then
-					self._loopsFinished += 1
+					self._loopsFinished = self._loopsFinished + 1
 					changeFrame((frame + frameStep) % framesCount)
 					state.onLoopFinishedEvent(self)
 				else
@@ -489,7 +489,7 @@ end
 ---Invoke manually to move the animation to the next frame.
 function AnimatedSprite:updateAnimation()
 	if (self._enabled) then
-		self._ticks += 1
+		self._ticks = self._ticks + 1
 		if ((self._ticks - self._previousTicks) >= self.states[self.currentState].tickStep) then
 			local state = self.states[self.currentState]
 			local loop = state.loop
@@ -502,7 +502,7 @@ function AnimatedSprite:updateAnimation()
 			end
 			processAnimation(self)
 			drawFrame(self)
-			self._previousTicks += state.tickStep
+			self._previousTicks = self._previousTicks + state.tickStep
 		end
 	end
 end
