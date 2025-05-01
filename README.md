@@ -20,7 +20,7 @@ This framework provides a starting point for developing games on the Playdate co
 
 1. Clone this repository:
     ```sh
-    git clone https://github.com/yourusername/playdate_game_template.git
+    git clone https://github.com/Dubnium32x/Playdate-Game-Dev-Framework
     ```
 2. Navigate to the project directory:
     ```sh
