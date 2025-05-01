@@ -1,4 +1,4 @@
--- playerMovement.lua
+-- player.lua
 
 -- Import the CoreLibs modules for essential functionalities
 import "CoreLibs/object"
