@@ -24,7 +24,7 @@ This framework provides a starting point for developing games on the Playdate co
     ```
 2. Navigate to the project directory:
     ```sh
-    cd playdate_game_template
+    cd Playdate-Game-Dev-Framework
     ```
 3. Open the project in your preferred code editor.
 
