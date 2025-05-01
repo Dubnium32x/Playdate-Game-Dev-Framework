@@ -41,3 +41,7 @@ https://github.com/Whitebrim/AnimatedSprite
 #### LDtk Importer
 https://github.com/NicMagnier/PlaydateLDtkImporter/blob/main
 
+## Still stuck?
+
+Give this video a watch!
+https://www.youtube.com/watch?v=UZ04rk3lLqU&list=PLlMPQvEA0GZPOuKJyhSr3Ra0vrpCiBTnb
