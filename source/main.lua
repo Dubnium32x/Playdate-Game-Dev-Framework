@@ -1,74 +1,49 @@
 -- main.lua
 
--- Import CoreLibs modules for essential functionalities
 import "CoreLibs/object"
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/timer"
 import "CoreLibs/ui"
 
--- Import scripts
-import "scripts/player"
-import "scripts/screenTransition"
+local ScreenManager = import "scripts/world/screen_manager"
+local TitleScreen = import "scripts/screens/title_screen"
+local ModeAndOptions = import "scripts/screens/mode_and_options"
+local GameScreen = import "scripts/screens/game_screen"
+_G.GameScreen = GameScreen
+local InitScreen = import "scripts/screens/init_screen"
+local OptionsScreen = import "scripts/screens/options_screen"
+local Options = import "scripts/world/options"
+_G.OptionsScreen = OptionsScreen
 
--- Shorthand for the graphics modules and playdate specific functions
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
--- Global variables for your game (if needed)
-local currentScreenIndex = 1 -- Example starting screen index
-local player = nil
-local transition = ScreenTransition:new(0.05)
+-- Use import for Playdate Lua, do not use require
 
--- INITIALIZE
+-- Set the initial screen (e.g., InitScreen)
+ScreenManager.setScreen(InitScreen)
+
 function pd.init()
-    -- Create the player using the Player class from playerMovement.lua
-    player = Player.new(nil, "sprites/avatar", 8, 16, 200, 180) -- Example sprite sheet (requires nil first for "self")
-    pd:draw()
+    ScreenManager.setScreen(InitScreen)
+    pd.setRefreshRate(45) -- Set the refresh rate to 45 FPS
 end
 
--- SWITCH SCREEN
-function switchScreen(newScreen)
-    transition:startFadeOut(function()
-        currentScreen = newScreen
-        transition:startFadeIn()
-    end)
-end
 
--- UPDATE
 function pd.update()
-    -- Draw the FPS
-    pd.drawFPS(0,0)
-
-    -- Update the player movement and animation
-    player:update()
-
-    -- Example input: Change the screen index when the player presses the A or B button
-    if pd.buttonJustPressed(pd.kButtonA) then
-        currentScreenIndex = currentScreenIndex + 1 -- Increment the screen index    
-        pd:draw()
-    elseif pd.buttonJustPressed(pd.kButtonB) then
-        currentScreenIndex = math.max(1, currentScreenIndex - 1) -- Decrement the screen index, with a minimum of 1
-        pd:draw()
-    end  
-
-    if currentScreen then currentScreen:update() end
-    transition:update()
-    transition:draw()
-
-    gfx.sprite.update()
+    ScreenManager.update()
+    ScreenManager.draw()
     pd.timer.updateTimers()
-    gfx.drawTextAligned("Screen Index: " .. tostring(currentScreenIndex), 200, 120, kTextAlignment.center) -- Draw text centered on the screen
-
 end
 
--- DRAW BACKGROUND
-function pd.draw()
-    gfx.clear()
-    gfx.setFont(gfx.getSystemFont("normal"), "normal") -- Set the default system font
-    gfx.setImageDrawMode(gfx.kDrawModeFillBlack) -- Set the default image draw mode
-    gfx.drawTextAligned("Screen Index: " .. tostring(currentScreenIndex), 200, 120, kTextAlignment.center) -- Draw text centered on the screen
+function playdate.AButtonDown()
+    if ScreenManager.currentScreen and ScreenManager.currentScreen.AButtonDown then
+        ScreenManager.currentScreen:AButtonDown()
+    end
 end
 
--- Run initialization
-pd.init()
+-- Example: Switch to another screen (call this from a screen's update method)
+
+-- Correct way: create an instance and set as current screen
+-- local gameScreenInstance = GameScreen:new()
+-- ScreenManager.setScreen(gameScreenInstance)
