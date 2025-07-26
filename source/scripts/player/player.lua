@@ -483,6 +483,9 @@ function Player:drawSensors(cameraX, cameraY)
     cameraX = cameraX or 0
     cameraY = cameraY or 0
     
+    -- Set NXOR drawing mode for better text visibility
+    gfx.setImageDrawMode(gfx.kDrawModeNXOR)
+    
     -- Draw player bounding box
     gfx.drawRect(self.x - self.widthrad - cameraX, self.y - self.heightrad - cameraY, 
                 self.widthrad * 2, self.heightrad * 2)
@@ -517,6 +520,9 @@ function Player:drawSensors(cameraX, cameraY)
             end
         end
     end
+    
+    -- Reset to normal drawing mode
+    gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
 function Player:checkCollisions(level, tileSize)
