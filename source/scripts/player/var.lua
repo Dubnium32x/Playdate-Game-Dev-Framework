@@ -12,7 +12,7 @@ var.groundspeed = 0
 var.groundangle = 0
 var.widthrad = 9
 var.heightrad = 19
-var.jumpforce = 5.5
+var.jumpforce = 6.0 -- Reduced jump force for less floaty jumps
 var.pushradius = 10
 
 var.grounded = false

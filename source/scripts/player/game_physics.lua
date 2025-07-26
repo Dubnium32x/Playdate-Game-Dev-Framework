@@ -6,20 +6,20 @@ setmetatable(GamePhysics, { __index = var })
 
 function GamePhysics:new(...)
     local self = setmetatable({}, GamePhysics)
-    -- Insert default values for physics properties
+    -- Insert default values for physics properties based on Sonic Physics Guide
     self.groundmode = "floor"
-    self.acceleration = 0.06
-    self.deceleration = 0.08
-    self.friction = 0.046875
-    self.topspeed = 6.0
-    self.maxspeed = 8.5
-    self.gravity = 0.26
-    self.maxFallSpeed = 14.0
+    self.acceleration = 0.046875    -- Sonic's ground acceleration (0.046875 per frame)
+    self.deceleration = 0.5         -- Sonic's ground deceleration (0.5 per frame)
+    self.friction = 0.046875        -- Sonic's ground friction (same as acceleration)
+    self.topspeed = 6.0             -- Regular top speed
+    self.maxspeed = 12.0            -- Absolute maximum speed (e.g., rolling down slopes)
+    self.gravity = 0.3125           -- Increased gravity (was 0.21875) for faster descent
+    self.maxFallSpeed = 16.0        -- Maximum fall speed
 
     -- Rolling physics constants
-    self.rollingFriction = 0.023
-    self.rollingDeceleration = 0.04
-    self.minSpeedToStartRoll = 2.0
+    self.rollingFriction = 0.0234375 -- Half of regular friction
+    self.rollingDeceleration = 0.125 -- Quarter of regular deceleration
+    self.minSpeedToStartRoll = 1.03125 -- Minimum speed needed to start rolling
 
     -- Hitbox dimensions
     self.normalWidthRad = 9.0
