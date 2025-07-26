@@ -39,9 +39,29 @@ local cursorSound = pd.sound.sample.new("sounds/Sonic 3K/S3K_5B.wav")
 
 function OptionsScreen:init()
     self.selectedIndex = 1
-    Options:init()
+    
+    -- Make sure we have access to the global Options
+    local globalOptions = _G.Options
+    if not globalOptions or not globalOptions.settings then
+        print("[OptionsScreen] Warning: Global Options not found, creating default settings")
+        globalOptions = {
+            settings = {
+                soundEnabled = true,
+                musicEnabled = true,
+                musicVolume = 0.7,
+                startingLives = 3,
+                peeloutEnabled = true,
+                debugMode = true,
+                timeoverEnabled = true,
+                levelSelectEnabled = true
+            }
+        }
+        _G.Options = globalOptions
+    end
+    
+    -- Create a local copy of settings for staging
     self.stagedSettings = {}
-    for k, v in pairs(Options.settings) do
+    for k, v in pairs(globalOptions.settings) do
         self.stagedSettings[k] = v
     end
     
@@ -49,6 +69,8 @@ function OptionsScreen:init()
     if self.stagedSettings.musicVolume == nil then
         self.stagedSettings.musicVolume = 0.7
     end
+    
+    print("[OptionsScreen] Initialized with settings:", table.concat(self.stagedSettings, ", "))
 end
 
 function OptionsScreen:update()
@@ -65,21 +87,29 @@ function OptionsScreen:update()
         if cursorSound then cursorSound:play() end
         local key = optionKeys[self.selectedIndex]
         if key == "apply" then
-            for k, v in pairs(self.stagedSettings) do
-                Options.settings[k] = v
+            local globalOptions = _G.Options
+            if globalOptions and globalOptions.settings then
+                for k, v in pairs(self.stagedSettings) do
+                    globalOptions.settings[k] = v
+                end
+                if globalOptions.save then
+                    globalOptions:save()
+                end
+                print("[OptionsScreen] Settings applied")
+            else
+                print("[OptionsScreen] Warning: Global Options not found, settings not saved")
             end
-            Options:save()
             
             -- Apply sound settings immediately
             if _G.SoundManager then
-                if _G.SoundManager.setMusicVolume and Options.settings.musicVolume then
-                    _G.SoundManager:setMusicVolume(Options.settings.musicVolume)
+                if _G.SoundManager.setMusicVolume and self.stagedSettings.musicVolume then
+                    _G.SoundManager:setMusicVolume(self.stagedSettings.musicVolume)
                 end
                 
                 -- Toggle music if needed
-                if not Options.settings.musicEnabled then
+                if not self.stagedSettings.musicEnabled then
                     _G.SoundManager:stopMusic()
-                elseif Options.settings.musicEnabled and _G.SoundManager.currentMusic == nil then
+                elseif self.stagedSettings.musicEnabled and _G.SoundManager.currentMusic == nil then
                     _G.SoundManager:playMusic("gameplay")
                 end
             end

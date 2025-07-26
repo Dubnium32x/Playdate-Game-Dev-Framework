@@ -35,7 +35,7 @@ local selectSound = pd.sound.sample.new("sounds/Sonic 3K/S3K_63.wav")
 
 local gameClose = false
 
-local prealphaText = "Pre-Alpha Version 0.1.2"
+local prealphaText = "Pre-Alpha Version 0.1.5"
 
 local menuSelectionText = {
     "Start Game",
@@ -75,7 +75,7 @@ function TitleScreen:update()
         local ScreenManager = _G.ScreenManager
         if self.selectedIndex == 2 then
             -- Go to Options screen
-            local OptionsScreen = _G.OptionsScreen or _G.Options
+            local OptionsScreen = _G.OptionsScreen
             if OptionsScreen then
                 print("[TitleScreen] Switching to Options screen...")
                 ScreenManager.setScreen(OptionsScreen)
