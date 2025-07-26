@@ -51,8 +51,10 @@ _G.GameScreen = GameScreen
 local InitScreen = import "scripts/screens/init_screen"
 local OptionsScreen = import "scripts/screens/options_screen"
 local Options = import "scripts/world/options"
+local SoundManager = import "scripts/util/sound_manager"
 _G.Options = Options  -- Make Options globally accessible
 _G.OptionsScreen = OptionsScreen
+_G.SoundManager = SoundManager  -- Make SoundManager globally accessible
 
 local pd <const> = playdate
 local gfx <const> = pd.graphics
@@ -76,6 +78,12 @@ function pd.init()
             soundEnabled = true,
             musicEnabled = true
         }
+    end
+    
+    -- Initialize sound manager
+    if SoundManager and SoundManager.init then
+        SoundManager:init()
+        print("Sound Manager initialized successfully")
     end
     
     -- Then set the screen

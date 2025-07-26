@@ -13,6 +13,7 @@ OptionsScreen.selectedIndex = 1
 local optionKeys = {
     "soundEnabled",
     "musicEnabled",
+    "musicVolume",
     "startingLives",
     "peeloutEnabled",
     "debugMode",
@@ -24,6 +25,7 @@ local optionKeys = {
 local optionLabels = {
     soundEnabled = "Sound",
     musicEnabled = "Music",
+    musicVolume = "Music Volume",
     startingLives = "Starting Lives",
     peeloutEnabled = "Peelout",
     debugMode = "Debug Mode",
@@ -41,6 +43,11 @@ function OptionsScreen:init()
     self.stagedSettings = {}
     for k, v in pairs(Options.settings) do
         self.stagedSettings[k] = v
+    end
+    
+    -- Initialize default values if not present
+    if self.stagedSettings.musicVolume == nil then
+        self.stagedSettings.musicVolume = 0.7
     end
 end
 
@@ -62,6 +69,21 @@ function OptionsScreen:update()
                 Options.settings[k] = v
             end
             Options:save()
+            
+            -- Apply sound settings immediately
+            if _G.SoundManager then
+                if _G.SoundManager.setMusicVolume and Options.settings.musicVolume then
+                    _G.SoundManager:setMusicVolume(Options.settings.musicVolume)
+                end
+                
+                -- Toggle music if needed
+                if not Options.settings.musicEnabled then
+                    _G.SoundManager:stopMusic()
+                elseif Options.settings.musicEnabled and _G.SoundManager.currentMusic == nil then
+                    _G.SoundManager:playMusic("gameplay")
+                end
+            end
+            
             local ScreenManager = _G.ScreenManager
             local TitleScreen = _G.TitleScreen
             ScreenManager.setScreen(TitleScreen)
@@ -71,6 +93,9 @@ function OptionsScreen:update()
             ScreenManager.setScreen(TitleScreen)
         elseif key == "startingLives" then
             self.stagedSettings.startingLives = (self.stagedSettings.startingLives % 5) + 1 -- Cycle through 1 to 5 lives
+        elseif key == "musicVolume" then
+            -- Increment volume by 0.1, loop back to 0.1 after 1.0
+            self.stagedSettings.musicVolume = ((self.stagedSettings.musicVolume * 10) % 10 + 1) / 10
         elseif self.stagedSettings[key] ~= nil then
             self.stagedSettings[key] = not self.stagedSettings[key]
         end
@@ -92,8 +117,13 @@ function OptionsScreen:draw()
         local label = optionLabels[key]
         local value = self.stagedSettings[key]
         local text
+        
         if key == "apply" or key == "cancel" then
             text = label
+        elseif key == "musicVolume" then
+            -- Display volume as a percentage
+            local volumePercent = math.floor((value or 0.7) * 100)
+            text = label .. ": " .. volumePercent .. "%"
         else
             text = label .. ": " .. tostring(value)
         end
