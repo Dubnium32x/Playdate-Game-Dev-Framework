@@ -506,8 +506,7 @@ function Player:drawSensors(cameraX, cameraY)
     local stateName = stateNames[self.state] or "?"
     gfx.drawText("State: " .. stateName, 10, 140)
     
-    -- Draw lives at the bottom
-    gfx.drawText("LIVES: " .. self.lives, 10, 220)
+    -- Don't draw lives here, as it's handled by the HUD module
     
     -- Only draw sensor points if specifically requested with a flag
     if _G.DRAW_DETAILED_SENSORS then

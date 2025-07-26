@@ -12,6 +12,7 @@ local ScreenManager = import "scripts/world/screen_manager"
 local Player = import "scripts/player/player"
 local csv_loader = import "scripts/util/csv_loader"
 local SoundManager = import "scripts/util/sound_manager"
+local HUD = import "scripts/screens/hud"
 
 local GameScreen = {}
 
@@ -79,6 +80,9 @@ function GameScreen:init()
     -- Critical: Set the level reference for the player to enable collision detection
     self.player.level = self.level
     
+    -- Initialize HUD
+    self.hud = HUD
+    
     -- Set frame rate to 45 FPS
     pd.display.setRefreshRate(45)
     
@@ -141,6 +145,16 @@ function GameScreen:update()
         -- Camera follows player
         self.cameraX = math.floor(self.player.x - 200) -- 200 = half screen width
         self.cameraY = math.floor(self.player.y - 120) -- 120 = half screen height
+        
+        -- Update HUD data from player
+        if self.hud then
+            self.hud:setState({
+                score = self.player.score,
+                rings = self.player.rings,
+                lives = self.player.lives,
+                time = (pd.getCurrentTimeMilliseconds() - self.player.startTime) / 1000
+            })
+        end
     end
     self:handleLevelUpdates()
 end
@@ -166,7 +180,7 @@ function GameScreen:draw()
         end
     end
     
-    -- Draw the HUD (score, lives, etc.) - always draw on top
+    -- Draw the HUD last to ensure it's on top of everything else
     self:drawHUD()
 end
 
@@ -258,39 +272,18 @@ function GameScreen:drawLevel()
 end
 
 function GameScreen:drawHUD()
-    -- Use a fixed font to avoid text rendering overhead
-    gfx.setFont(nil) -- Use default font
-    
-    -- Draw the HUD elements like score, lives, etc.
-    gfx.setImageDrawMode(gfx.kDrawModeNXOR)
-    
-    -- Safely check debug mode setting
-    local debugMode = (_G.Options and _G.Options.settings and _G.Options.settings.debugMode) or false
-    
-    -- Only show detailed HUD in debug mode
-    if debugMode then
-        gfx.drawText("SCORE: " .. self.player.score, 10, 20)
-        local ms = pd.getCurrentTimeMilliseconds() - self.player.startTime
-        local totalSeconds = math.floor(ms / 1000)
-        local minutes = math.floor(totalSeconds / 60)
-        local seconds = totalSeconds % 60
-        local milliseconds = ms % 1000
-        gfx.drawText(string.format("TIME: %01d:%02d.%02d", minutes, seconds, milliseconds), 10, 40)
-        gfx.drawText("RINGS: " .. self.player.rings, 10, 60)
-        gfx.drawText("LIVES: " .. self.player.lives, 10, 200)
-        
-        -- Show FPS in debug mode
-        gfx.drawText("FPS: " .. math.floor(pd.getFPS() or 0), 320, 10)
-    else
-        -- Minimal HUD for better performance
-        gfx.drawText("RINGS: " .. self.player.rings, 10, 10)
-        
-        -- Simple time display
-        local seconds = math.floor((pd.getCurrentTimeMilliseconds() - self.player.startTime) / 1000)
-        gfx.drawText("TIME: " .. math.floor(seconds / 60) .. ":" .. string.format("%02d", seconds % 60), 10, 30)
+    -- Use the dedicated HUD module to draw the HUD
+    if self.hud then
+        self.hud:draw()
     end
     
-    gfx.setImageDrawMode(gfx.kDrawModeCopy) -- Reset to default after drawing HUD
+    -- Show FPS in debug mode only
+    local debugMode = (_G.Options and _G.Options.settings and _G.Options.settings.debugMode) or false
+    if debugMode then
+        gfx.setImageDrawMode(gfx.kDrawModeNXOR)
+        gfx.drawText("FPS: " .. math.floor(pd.getFPS() or 0), 320, 10)
+        gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    end
 end
 
 function GameScreen:handleLevelUpdates()
