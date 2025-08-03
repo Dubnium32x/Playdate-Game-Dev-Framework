@@ -209,6 +209,8 @@ end
 function Player:draw(cameraX, cameraY)
     cameraX = cameraX or 0
     cameraY = cameraY or 0
+    
+    -- Draw player sprite
     if self.image then
         self.image:drawCentered(self.x - cameraX, self.y - cameraY)
     end
@@ -278,6 +280,11 @@ function Player:processInput()
 end
 
 function Player:update()
+    -- Import collision handler module if needed
+    if not self.collisionHandler then
+        self.collisionHandler = import "scripts/world/collision_handler"
+    end
+    
     self:processInput()
     
     -- Store previous position for collision
@@ -313,8 +320,6 @@ function Player:update()
         
         -- Clear ground stability counter
         self.groundStabilityCounter = 0
-        
-        print("Jump initiated! yspeed =", self.yspeed, "jumpforce =", self.jumpforce)
     end
     
     -- Ground movement
@@ -430,13 +435,53 @@ function Player:update()
     self.x = self.x + self.xspeed
     self.y = self.y + self.yspeed
     
+    -- Reset grounded state before collision checks
+    if self.groundStabilityCounter <= 0 then
+        self.grounded = false
+    else
+        self.groundStabilityCounter = self.groundStabilityCounter - 1
+    end
+    
     -- Update sensor positions after movement but before collision
     self:updateSensors()
     
-    -- Check for and resolve collisions
+    -- Check for and resolve collisions using the new CollisionHandler
     if self.level and (self.level.csv_ground1 or self.level.csv_semisolid1) then
-        print("Checking collisions at:", self.x, self.y)
-        self:checkCollisions(self.level, 16)
+        -- Get the collision tileset
+        local tileset = self.collisionTileset
+        
+        -- Try to initialize tileset if not already done
+        if not tileset then
+            self.collisionTileset = gfx.imagetable.new("sprites/tileset/SPGSolidTileHeightCollision_flipped-table-16-16")
+            tileset = self.collisionTileset
+        end
+        
+        -- Use the collision handler to check collisions
+        self.collisionHandler.checkTileCollision(self, self.level, 16, tileset)
+        
+        -- Handle ground stability
+        if self.grounded then
+            -- Always keep the stability counter at maximum while grounded
+            self.groundStabilityCounter = self.groundStabilityMax or 8
+            self.framesNotGrounded = 0
+            
+            -- Change the player state based on grounding and speed
+            if math.abs(self.xspeed) > 3.0 then
+                self.state = PlayerState.RUN
+            elseif math.abs(self.xspeed) > 0.5 then
+                self.state = PlayerState.WALK
+            else
+                self.state = PlayerState.IDLE
+            end
+        else
+            -- Increment frames not grounded
+            self.framesNotGrounded = (self.framesNotGrounded or 0) + 1
+            
+            -- Tolerance for short un-grounded periods
+            if self.framesNotGrounded <= (self.groundedToleranceFrames or 3) then
+                self.grounded = true
+            end
+        end
     else
         -- Debug output to trace which condition failed
         if not self.level then
@@ -479,20 +524,31 @@ function Player:update()
 end
 
 function Player:drawSensors(cameraX, cameraY)
+    -- Import collision handler module if needed
+    if not self.collisionHandler then
+        self.collisionHandler = import "scripts/world/collision_handler"
+    end
+    
     -- Default camera values if not provided
     cameraX = cameraX or 0
     cameraY = cameraY or 0
     
+    -- Save the original position to restore later
+    local originalX, originalY = self.x, self.y
+    
+    -- Temporarily offset the player by camera position for proper drawing
+    self.x = self.x - cameraX
+    self.y = self.y - cameraY
+    
+    -- Update sensors to the adjusted position
+    self:updateSensors()
+    
     -- Set NXOR drawing mode for better text visibility
     gfx.setImageDrawMode(gfx.kDrawModeNXOR)
     
-    -- Draw player bounding box
-    gfx.drawRect(self.x - self.widthrad - cameraX, self.y - self.heightrad - cameraY, 
-                self.widthrad * 2, self.heightrad * 2)
-                
-    -- Draw minimal debug text to reduce rendering overhead
+    -- Draw detailed physics debugging information
     gfx.drawText("Status: " .. (self.grounded and "GROUNDED" or "IN AIR"), 10, 80)
-    gfx.drawText(string.format("Pos: %.1f, %.1f", self.x, self.y), 10, 100)
+    gfx.drawText(string.format("Pos: %.1f, %.1f", originalX, originalY), 10, 100)
     gfx.drawText(string.format("Speed: %.1f, %.1f", self.xspeed, self.yspeed), 10, 120)
     
     -- Draw current state name (compact)
@@ -506,444 +562,39 @@ function Player:drawSensors(cameraX, cameraY)
     local stateName = stateNames[self.state] or "?"
     gfx.drawText("State: " .. stateName, 10, 140)
     
-    -- Don't draw lives here, as it's handled by the HUD module
+    -- Enable debug drawing in collision handler
+    self.collisionHandler.DEBUG = true
     
-    -- Only draw sensor points if specifically requested with a flag
-    if _G.DRAW_DETAILED_SENSORS then
-        if self.sensors then
-            for i, s in pairs(self.sensors) do
-                if s and s.x and s.y then
-                    -- Just draw simple points for all sensors
-                    gfx.fillCircleAtPoint(s.x - cameraX, s.y - cameraY, 2)
-                end
-            end
-        end
-    end
+    -- Draw collision debug information
+    self.collisionHandler.drawDebug(self)
+    
+    -- PixelCollision debug information
+    local PixelCollision = import "scripts/world/pixel_collision"
+    PixelCollision.DEBUG = true
+    PixelCollision.drawDebug()
+    
+    -- Reset debug flags after drawing
+    self.collisionHandler.DEBUG = false
+    PixelCollision.DEBUG = false
     
     -- Reset to normal drawing mode
     gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    
+    -- Restore original position
+    self.x = originalX
+    self.y = originalY
+    
+    -- Update sensors back to the original position
+    self:updateSensors()
 end
 
+-- This function has been replaced by the CollisionHandler module
+--[[
 function Player:checkCollisions(level, tileSize)
-    -- Guard clause for nil level
-    if not level then 
-        print("No level provided to checkCollisions")
-        return 
-    end
-    
-    -- Make sure width and height radii are set
-    self.widthrad = self.widthrad or 14  -- Default to half sprite width
-    self.heightrad = self.heightrad or 20 -- Default to half sprite height
-    
-    -- Update sensor positions
-    self:updateSensors()
-    
-    -- Use cached tileset if available, or load it once
-    if not self.collisionTileset then
-        -- Try different path formats until one works
-        self.collisionTileset = gfx.imagetable.new("sprites/tileset/SPGSolidTileHeightCollision_flipped-table-16-16")
-        
-        -- If still not loaded, try alternate paths
-        if not self.collisionTileset then
-            self.collisionTileset = gfx.imagetable.new("source/sprites/tileset/SPGSolidTileHeightCollision_flipped-table-16-16")
-        end
-        
-        -- If still not loaded, try just the filename
-        if not self.collisionTileset then
-            self.collisionTileset = gfx.imagetable.new("SPGSolidTileHeightCollision_flipped-table-16-16")
-        end
-        
-        -- Final check
-        if not self.collisionTileset then
-            print("WARNING: Failed to load collision tileset! Tried multiple paths.")
-            print("Current directory: " .. pd.file.getWorkingDirectory())
-            
-            -- Create a simple placeholder tileset for debugging
-            local placeholderImg = gfx.image.new(16, 16)
-            gfx.pushContext(placeholderImg)
-            gfx.drawRect(0, 0, 16, 16)
-            gfx.drawLine(0, 0, 16, 16)
-            gfx.drawLine(16, 0, 0, 16)
-            gfx.popContext()
-            
-            -- Create a simple table with just this one image
-            self.collisionTileset = {
-                getImage = function(_, index)
-                    return placeholderImg
-                end,
-                drawImage = function(_, index, x, y)
-                    placeholderImg:draw(x, y)
-                end
-            }
-        end
-    end
-    
-    -- Use the cached tileset for collision detection
-    local tileset = self.collisionTileset
-    
-    -- Define the layers we want to check for collisions
-    local layersToCheck = {
-        { data = level.csv_ground1, name = "Ground1" },
-        { data = level.csv_ground2, name = "Ground2" },
-        { data = level.csv_ground3, name = "Ground3" },
-        { data = level.csv_semisolid1, name = "SemiSolid1" },
-        { data = level.csv_semisolid2, name = "SemiSolid2" },
-        { data = level.csv_semisolid3, name = "SemiSolid3" }
-    }
-    
-    -- Define collision variables
-    local wasGrounded = self.grounded
-    local groundedThisFrame = false
-    
-    -- Store the class-level stability counter or initialize it
-    local groundStabilityCounter = self.groundStabilityCounter or 0
-    
-    -- Get player position and velocity
-    local px, py = self.x, self.y
-    local vx, vy = self.xspeed, self.yspeed
-    
-    -- Calculate paddings for collision detection
-    local horizPadding = math.min(math.abs(vx) * 0.5, self.widthrad * 0.5)
-    
-    -- Reset grounded state conditionally
-    if groundStabilityCounter <= 0 then
-        self.grounded = false
-    else
-        groundStabilityCounter = groundStabilityCounter - 1
-    end
-    
-    print("Checking collisions at position:", px, py, "with velocity:", vx, vy)
-    
-    -- Check each layer for collisions
-    for _, layer in ipairs(layersToCheck) do
-        local tilemap = layer.data
-        local layerName = layer.name
-        
-        if not tilemap then
-            print("Layer", layerName, "not found")
-            goto continue
-        end
-        
-        -- Calculate tile indices overlapped by player
-        -- Add padding based on velocity for more accurate collision detection
-        local left = math.floor((px - self.widthrad - math.abs(vx)) / tileSize) + 1
-        local right = math.floor((px + self.widthrad + math.abs(vx)) / tileSize) + 1
-        local top = math.floor((py - self.heightrad - math.abs(vy)) / tileSize) + 1
-        local bottom = math.floor((py + self.heightrad + math.abs(vy)) / tileSize) + 1
-        
-        -- Clamp indices to tilemap bounds and ensure they're valid
-        left = math.max(1, left)
-        top = math.max(1, top)
-        
-        -- Check if tilemap dimensions are valid
-        if type(tilemap) ~= "table" or #tilemap == 0 then
-            print("Empty tilemap for layer", layerName)
-            goto continue
-        end
-        
-        -- Make sure we have at least one row
-        if not tilemap[1] or type(tilemap[1]) ~= "table" then
-            print("Invalid tilemap row data for layer", layerName)
-            goto continue
-        end
-        
-        -- Get dimensions and clamp indices
-        local mapHeight = #tilemap
-        local mapWidth = #tilemap[1]
-        
-        right = math.min(mapWidth, right)
-        bottom = math.min(mapHeight, bottom)
-        
-        print("Checking tiles from", left, top, "to", right, bottom, "in layer", layerName)
-        
-        -- Always check side collisions first
-        for ty = top, bottom do
-            -- Skip ceiling/floor rows to prevent false positives
-            if ty == top or ty == bottom then
-                goto continue_walls
-            end
-            
-            -- Check left wall collision (using middle left sensor)
-            if self.sensors[Sensor.MIDDLE_LEFT] and tilemap[ty] then
-                local tx = math.floor(self.sensors[Sensor.MIDDLE_LEFT].x / tileSize) + 1
-                if tx >= 1 and tx <= #tilemap[1] then
-                    local tile = tilemap[ty][tx]
-                    if tile and tonumber(tile) > 0 then
-                        local tileId = tonumber(tile)
-                        local hasPixelCollision = true -- Default to true for tile-based collision
-                        
-                        -- If tileset exists, check for pixel-perfect collision
-                        if tileset then
-                            print("Checking pixel collision for middle left sensor at tile", tx, ty)
-                            hasPixelCollision = PixelCollision.checkSensorPixelCollision(
-                                tileset,
-                                tileId + 1, -- Lua indexing adjustment
-                                self.sensors[Sensor.MIDDLE_LEFT].x,
-                                self.sensors[Sensor.MIDDLE_LEFT].y,
-                                tx - 1,
-                                ty - 1,
-                                tileSize
-                            )
-                            print("Result of pixel collision check:", hasPixelCollision)
-                        end
-                        
-                        -- Left wall collision detected - only resolve if moving left and pixel collision exists
-                        if hasPixelCollision and self.xspeed <= 0 then
-                            self.x = tx * tileSize + self.widthrad + 0.1
-                            self.xspeed = 0
-                            print("Left wall collision at tile", tx, ty)
-                        end
-                    end
-                end
-            end
-            
-            -- Check right wall collision (using middle right sensor)
-            if self.sensors[Sensor.MIDDLE_RIGHT] and tilemap[ty] then
-                local tx = math.floor(self.sensors[Sensor.MIDDLE_RIGHT].x / tileSize) + 1
-                if tx >= 1 and tx <= #tilemap[1] then
-                    local tile = tilemap[ty][tx]
-                    if tile and tonumber(tile) > 0 then
-                        local tileId = tonumber(tile)
-                        local hasPixelCollision = true -- Default to true for tile-based collision
-                        
-                        -- If tileset exists, check for pixel-perfect collision
-                        if tileset then
-                            hasPixelCollision = PixelCollision.checkSensorPixelCollision(
-                                tileset,
-                                tileId + 1, -- Lua indexing adjustment
-                                self.sensors[Sensor.MIDDLE_RIGHT].x,
-                                self.sensors[Sensor.MIDDLE_RIGHT].y,
-                                tx - 1,
-                                ty - 1,
-                                tileSize
-                            )
-                        end
-                        
-                        -- Right wall collision detected - only resolve if moving right and pixel collision exists
-                        if hasPixelCollision and self.xspeed >= 0 then
-                            self.x = (tx - 1) * tileSize - self.widthrad - 0.1
-                            self.xspeed = 0
-                            print("Right wall collision at tile", tx, ty)
-                        end
-                    end
-                end
-            end
-            
-            ::continue_walls::
-        end
-        
-        -- Now check bottom sensors for ground collision
-        for tx = left, right do
-            -- Ground collision (falling onto ground)
-            if vy >= 0 and self.sensors[1] and self.sensors[2] and tilemap[bottom] then
-                local leftSensorTile = nil
-                local rightSensorTile = nil
-                
-                -- Get the tiles under the bottom sensors
-                local leftSensorX = math.floor(self.sensors[1].x / tileSize) + 1
-                local rightSensorX = math.floor(self.sensors[2].x / tileSize) + 1
-                
-                if leftSensorX >= 1 and leftSensorX <= #tilemap[1] then
-                    leftSensorTile = tilemap[bottom][leftSensorX]
-                end
-                
-                if rightSensorX >= 1 and rightSensorX <= #tilemap[1] then
-                    rightSensorTile = tilemap[bottom][rightSensorX]
-                end
-                
-                -- First check for tile-level collision
-                local leftTileCollision = leftSensorTile and tonumber(leftSensorTile) > 0
-                local rightTileCollision = rightSensorTile and tonumber(rightSensorTile) > 0
-                
-                -- If tiles exist, perform pixel-perfect collision check
-                if leftTileCollision or rightTileCollision then
-                    local hasPixelCollision = false
-                    
-                    -- Check left sensor for pixel collision
-                    if leftTileCollision and tileset then
-                        local leftTileId = tonumber(leftSensorTile)
-                        local leftPixelCollision = PixelCollision.checkSensorPixelCollision(
-                            tileset, 
-                            leftTileId + 1, -- Lua indexing adjustment
-                            self.sensors[1].x, 
-                            self.sensors[1].y,
-                            leftSensorX - 1, 
-                            bottom - 1, 
-                            tileSize
-                        )
-                        if leftPixelCollision then
-                            hasPixelCollision = true
-                        end
-                    end
-                    
-                    -- Check right sensor for pixel collision
-                    if rightTileCollision and tileset then
-                        local rightTileId = tonumber(rightSensorTile)
-                        local rightPixelCollision = PixelCollision.checkSensorPixelCollision(
-                            tileset, 
-                            rightTileId + 1, -- Lua indexing adjustment
-                            self.sensors[2].x, 
-                            self.sensors[2].y,
-                            rightSensorX - 1, 
-                            bottom - 1, 
-                            tileSize
-                        )
-                        if rightPixelCollision then
-                            hasPixelCollision = true
-                        end
-                    end
-                    
-                    -- If we have a collision with solid pixels, handle it
-                    if hasPixelCollision or (not tileset) then -- Fallback to tile-based if no tileset
-                        -- Ground collision detected - position player precisely on top of the ground
-                        self.y = (bottom - 1) * tileSize - self.heightrad - 0.1
-                        self.yspeed = 0
-                        self.grounded = true
-                        groundedThisFrame = true
-                        
-                        print("Ground collision at position", self.x, self.y, 
-                              "Left tile:", leftSensorTile, "Right tile:", rightSensorTile)
-                        
-                        -- Check for semi-solid platform
-                        local isSemiSolid = string.sub(layerName, 1, 9) == "SemiSolid"
-                        if isSemiSolid then
-                            print("Landed on semi-solid platform")
-                        end
-                        
-                        -- Important: Don't break here, continue checking all tiles
-                        -- This prevents falling through narrow platforms
-                    end
-                end
-            end
-            
-            -- Ceiling collision (jumping and hitting ceiling)
-            if vy < 0 and self.sensors[5] and self.sensors[6] and tilemap[top] then
-                local leftSensorTile = nil
-                local rightSensorTile = nil
-                
-                -- Get the tiles above the top sensors
-                local leftSensorX = math.floor(self.sensors[5].x / tileSize) + 1
-                local rightSensorX = math.floor(self.sensors[6].x / tileSize) + 1
-                
-                if leftSensorX >= 1 and leftSensorX <= #tilemap[1] then
-                    leftSensorTile = tilemap[top][leftSensorX]
-                end
-                
-                if rightSensorX >= 1 and rightSensorX <= #tilemap[1] then
-                    rightSensorTile = tilemap[top][rightSensorX]
-                end
-                
-                -- First check for tile-level collision
-                local leftTileCollision = leftSensorTile and tonumber(leftSensorTile) > 0
-                local rightTileCollision = rightSensorTile and tonumber(rightSensorTile) > 0
-                
-                -- If tiles exist, perform pixel-perfect collision check
-                if leftTileCollision or rightTileCollision then
-                    local hasPixelCollision = false
-                    
-                    -- Check left sensor for pixel collision
-                    if leftTileCollision and tileset then
-                        local leftTileId = tonumber(leftSensorTile)
-                        local leftPixelCollision = PixelCollision.checkSensorPixelCollision(
-                            tileset, 
-                            leftTileId + 1, -- Lua indexing adjustment
-                            self.sensors[5].x, 
-                            self.sensors[5].y,
-                            leftSensorX - 1, 
-                            top - 1, 
-                            tileSize
-                        )
-                        if leftPixelCollision then
-                            hasPixelCollision = true
-                        end
-                    end
-                    
-                    -- Check right sensor for pixel collision
-                    if rightTileCollision and tileset then
-                        local rightTileId = tonumber(rightSensorTile)
-                        local rightPixelCollision = PixelCollision.checkSensorPixelCollision(
-                            tileset, 
-                            rightTileId + 1, -- Lua indexing adjustment
-                            self.sensors[6].x, 
-                            self.sensors[6].y,
-                            rightSensorX - 1, 
-                            top - 1, 
-                            tileSize
-                        )
-                        if rightPixelCollision then
-                            hasPixelCollision = true
-                        end
-                    end
-                    
-                    -- If we have a collision with solid pixels, handle it
-                    if hasPixelCollision or (not tileset) then -- Fallback to tile-based if no tileset
-                        -- Ceiling collision detected
-                        self.y = top * tileSize + self.heightrad + 0.1
-                        self.yspeed = 0
-                        print("Ceiling collision at position", self.x, self.y)
-                        break
-                    end
-                end
-            end
-        end
-        
-        ::continue::
-    end
-    
-    -- Update stability counter and handle grounding
-    if groundedThisFrame then
-        -- Set grounded to true and reset the frames not grounded counter
-        self.grounded = true
-        self.framesNotGrounded = 0
-        
-        -- Add stability counter to prevent oscillating between grounded/not grounded
-        -- Always keep the stability counter at maximum while grounded
-        self.groundStabilityCounter = self.groundStabilityMax or 8
-        
-        -- Set vertical speed to 0 when landing
-        self.yspeed = 0
-        
-        -- Change the player state if needed based on grounding
-        if math.abs(self.xspeed) > 3.0 then
-            self.state = PlayerState.RUN
-        elseif math.abs(self.xspeed) > 0.5 then
-            self.state = PlayerState.WALK
-        else
-            self.state = PlayerState.IDLE
-        end
-    else
-        -- If not grounded this frame, decrement the stability counter
-        if self.groundStabilityCounter > 0 then
-            self.groundStabilityCounter = self.groundStabilityCounter - 1
-            
-            -- If stability counter is still active, we're still grounded
-            -- This creates a buffer to prevent one-frame losses of ground state
-            if self.groundStabilityCounter > 0 then
-                self.grounded = true
-            end
-        else
-            -- If stability counter runs out, we're no longer grounded
-            self.grounded = false
-        end
-    end
-    
-    -- If the player was previously grounded but is no longer grounded, use tolerance frames
-    if wasGrounded and not self.grounded then
-        self.framesNotGrounded = (self.framesNotGrounded or 0) + 1
-        
-        -- Still consider the player grounded within the tolerance window
-        -- This prevents single-frame "in air" states
-        if self.framesNotGrounded <= self.groundedToleranceFrames then
-            self.grounded = true
-        end
-    elseif self.grounded then
-        -- Reset counter when grounded
-        self.framesNotGrounded = 0
-    end
-    
-    -- Update sensor positions after collision resolution
-    self:updateSensors()
+    -- This legacy function is no longer used
+    -- See collision_handler.lua for the new implementation
 end
+]]
 
 _G.Player = Player
 return Player
